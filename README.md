@@ -1,5 +1,7 @@
 # E-Commerce authentication backend
 
+**Developer handover:** start with [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) for architecture, API contracts, database schema, security, configuration, tests, and Windows setup.
+
 Spring Boot 3.3.5 / Java 21 REST API for account registration, cookie-based sessions, password recovery, and password changes. Shopping features are outside this project.
 
 ## Local setup (Windows)
@@ -21,7 +23,7 @@ $env:APP_COOKIE_SAME_SITE = 'Lax'
 mvn spring-boot:run
 ```
 
-The application runs on port 8080. Normal startup uses the configured datasource and Flyway; it can create or update schema objects. Confirm the datasource target before starting it. Do not point it at a database containing user data for tests. The test suite uses a separate in-memory H2 database and disables Flyway.
+The application runs on port 8080. Normal startup uses Flyway against the configured datasource and applies any pending versioned migrations. Confirm the datasource target before startup. Do not point it at a database containing user data for tests. The test suite uses a separate in-memory H2 database and disables Flyway.
 
 With the `local` profile active, recovery OTPs are printed in the backend console by the development-only delivery adapter; they are not returned to or displayed in the frontend. This is for local testing only.
 
