@@ -1,0 +1,61 @@
+{
+  "info": {
+    "_postman_id": "8d9e00a2-f7eb-4c31-9250-2b77d4f56d31",
+    "name": "E-Commerce Authentication API",
+    "description": "Authentication and recovery endpoints. Run CSRF Token first; Postman stores the readable CSRF cookie and token for later state-changing requests. Keep this collection pointed at a dedicated test database and test accounts.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "csrfToken", "value": "" },
+    { "key": "identifier", "value": "test@example.test" },
+    { "key": "otp", "value": "" },
+    { "key": "recoveryToken", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "CSRF Token",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/csrf" },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('CSRF token is returned', () => pm.response.to.have.status(200));", "const token = pm.response.json().csrfToken;", "pm.collectionVariables.set('csrfToken', token);", "pm.test('Token is a non-empty string', () => pm.expect(token).to.be.a('string').and.not.empty);"] } }]
+    },
+    {
+      "name": "Register",
+      "request": { "method": "POST", "header": [{ "key": "X-XSRF-TOKEN", "value": "{{csrfToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"fullName\": \"Test Account\",\n  \"email\": \"test@example.test\",\n  \"mobileNumber\": \"+447911123456\",\n  \"phoneRegion\": \"GB\",\n  \"password\": \"Example@123\",\n  \"confirmPassword\": \"Example@123\"\n}" }, "url": "{{baseUrl}}/api/reg" },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Registration returns 201', () => pm.response.to.have.status(201));"] } }]
+    },
+    {
+      "name": "Login",
+      "request": { "method": "POST", "header": [{ "key": "X-XSRF-TOKEN", "value": "{{csrfToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"identifier\": \"{{identifier}}\",\n  \"password\": \"Example@123\"\n}" }, "url": "{{baseUrl}}/api/login" },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Login succeeds', () => pm.response.to.have.status(200));", "pm.test('Response does not contain a raw access token', () => pm.expect(pm.response.text()).not.to.include('accessToken'));", "pm.test('Cookie session is returned', () => pm.expect(pm.cookies.has('ecommerce_access_token')).to.be.true);"] } }]
+    },
+    {
+      "name": "Current User",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/me" }
+    },
+    {
+      "name": "Protected Home",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/home" }
+    },
+    {
+      "name": "Forgot Password",
+      "request": { "method": "POST", "header": [{ "key": "X-XSRF-TOKEN", "value": "{{csrfToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"identifier\": \"{{identifier}}\"\n}" }, "url": "{{baseUrl}}/api/forgot-password" }
+    },
+    {
+      "name": "Verify OTP",
+      "request": { "method": "POST", "header": [{ "key": "X-XSRF-TOKEN", "value": "{{csrfToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"identifier\": \"{{identifier}}\",\n  \"otp\": \"{{otp}}\"\n}" }, "url": "{{baseUrl}}/api/verify-otp" },
+      "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["if (pm.response.code === 200) pm.collectionVariables.set('recoveryToken', pm.response.json().data.recoveryToken);"] } }]
+    },
+    {
+      "name": "Reset Password",
+      "request": { "method": "POST", "header": [{ "key": "X-XSRF-TOKEN", "value": "{{csrfToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"recoveryToken\": \"{{recoveryToken}}\",\n  \"newPassword\": \"NewPass@456\",\n  \"confirmPassword\": \"NewPass@456\"\n}" }, "url": "{{baseUrl}}/api/reset-password" }
+    },
+    {
+      "name": "Change Password",
+      "request": { "method": "PUT", "header": [{ "key": "X-XSRF-TOKEN", "value": "{{csrfToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"currentPassword\": \"Example@123\",\n  \"newPassword\": \"Changed@789\",\n  \"confirmPassword\": \"Changed@789\"\n}" }, "url": "{{baseUrl}}/api/change-password" }
+    },
+    {
+      "name": "Logout",
+      "request": { "method": "POST", "header": [{ "key": "X-XSRF-TOKEN", "value": "{{csrfToken}}" }], "url": "{{baseUrl}}/api/logout" }
+    }
+  ]
+}

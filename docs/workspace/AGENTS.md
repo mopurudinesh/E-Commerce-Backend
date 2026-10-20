@@ -13,3 +13,7 @@ Before every task in either E-Commerce repository:
 9. At the end of each approved phase, summarize completed work, changed files, commands/checks actually run, remaining issues, and the next proposed phase.
 
 If the plan, context, or repository state conflict, trust the user's latest instruction and actual repository state; explain the discrepancy before making consequential changes.
+
+## Latest user authorization takes precedence
+
+The phase gate and testing deferral above are defaults, not barriers to a later explicit user instruction. For the 2026-10-20 authentication completion request, the user explicitly authorized proceeding with implementation and automated tests. That work is recorded in the root `PROJECT_CONTEXT.md` and handover docs. Follow the latest direct user instruction when it changes phase approval, test authorization, or design preferences; preserve this file's safety rules about secrets, destructive database operations, and remote changes.

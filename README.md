@@ -1,36 +1,67 @@
-# E-Commerce-Backend
+# E-Commerce authentication backend
 
-## Local development
+Spring Boot 3.3.5 / Java 21 REST API for account registration, cookie-based sessions, password recovery, and password changes. Shopping features are outside this project.
 
-This is the Spring Boot authentication API. It uses MySQL and Flyway migrations. The application account is configured as `ecommerce_app`; do not use MySQL root for normal app access. The database and account must exist before startup. The application URL no longer asks MySQL to create the database automatically.
+## Local setup (Windows)
 
-The backend requires Java 21 or newer and Maven. Maven 3.10.0 with JDK 25.0.4.1 was verified. The backend has started locally on port 8080; Flyway applied V1 successfully to `ecommerce_auth`.
-
-In PowerShell, open a new terminal and set local environment values (use your own database password; do not commit it):
+Install JDK 21+ and Maven 3.9+. From PowerShell:
 
 ```powershell
+Set-Location C:\E-Commerce\E-Commerce-Backend
 $env:SPRING_DATASOURCE_URL = 'jdbc:mysql://localhost:3306/ecommerce_auth?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true'
-$env:SPRING_DATASOURCE_USERNAME = 'ecommerce_app'
-$env:SPRING_DATASOURCE_PASSWORD = '<your local ecommerce_app password>'
+$env:SPRING_DATASOURCE_USERNAME = '<local database account>'
+$env:SPRING_DATASOURCE_PASSWORD = '<local database password>'
+$keyBytes = New-Object byte[] 32
+[System.Security.Cryptography.RandomNumberGenerator]::Fill($keyBytes)
+$env:JWT_SECRET = [Convert]::ToBase64String($keyBytes)
 $env:SPRING_PROFILES_ACTIVE = 'local'
-$secretBytes = New-Object byte[] 32
-[System.Security.Cryptography.RandomNumberGenerator]::Fill($secretBytes)
-$env:JWT_SECRET = [Convert]::ToBase64String($secretBytes)
 $env:CORS_ALLOWED_ORIGINS = 'http://localhost:5173'
 $env:APP_COOKIE_SECURE = 'false'
 $env:APP_COOKIE_SAME_SITE = 'Lax'
 mvn spring-boot:run
 ```
 
-Flyway applies the checked-in migration during startup. V1 has been applied to the confirmed empty `ecommerce_auth` schema. For local HTTPS deployments, set `APP_COOKIE_SECURE=true` and review the `SameSite` policy.
+The application runs on port 8080. Normal startup uses the configured datasource and Flyway; it can create or update schema objects. Confirm the datasource target before starting it. Do not point it at a database containing user data for tests. The test suite uses a separate in-memory H2 database and disables Flyway.
 
-## API overview
+With the `local` profile active, recovery OTPs are printed in the backend console by the development-only delivery adapter; they are not returned to or displayed in the frontend. This is for local testing only.
 
-The fixed authentication routes are `POST /api/reg`, `POST /api/login`, `POST /api/logout`, `POST /api/forgot-password`, `POST /api/verify-otp`, `POST /api/reset-password`, `PUT /api/change-password`, `GET /api/me`, and `GET /api/home`. The login cookie is HttpOnly; raw access JWTs are not returned in the login response. The browser frontend is configured for `http://localhost:5173`.
+For HTTPS deployments, set `APP_COOKIE_SECURE=true` and choose a reviewed `APP_COOKIE_SAME_SITE` policy appropriate to the frontend/API origin arrangement. Keep `CORS_ALLOWED_ORIGINS` limited to the exact trusted frontend origins. Do not use the `local` profile in production because it exposes recovery codes to the server console.
 
-## Current limitations
+## Tests
 
-- For local recovery, start the backend with `SPRING_PROFILES_ACTIVE=local`; the 6-digit OTP is printed to the backend terminal with a local-only warning. The local profile must not be used in production. Without that profile, delivery is disabled until an email/SMS provider is configured.
-- Rate limits are in-memory and apply to one backend process; production deployments need a shared rate-limit store or gateway policy.
-- Frontend build and backend compile succeeded. Database migration and backend startup succeeded; registration/login/logout and protected-home behavior still need a manual browser walkthrough. Automated and Postman tests are deferred.
-- See [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md) for the implementation inventory, schema, API details, and handover status.
+```powershell
+mvn test
+```
+
+Tests use `src/test/resources/application-test.yml` (`jdbc:h2:mem:auth_test`, schema created and dropped for the test run). They do not use MySQL. The current verified run passed 7 tests: 6 API/JPA integration tests and 1 rate-limiter unit test.
+
+## API
+
+All routes are under `/api`. Call `GET /api/csrf` first and send its `csrfToken` response value as `X-XSRF-TOKEN` on every state-changing request. The browser cookie is HttpOnly for authentication; the separate CSRF cookie is readable by the SPA. The API permits credentialed CORS only from configured origins.
+
+| Method | Path | Access | Purpose |
+|---|---|---|---|
+| GET | `/api/csrf` | Public | Issue SPA CSRF token and cookie |
+| POST | `/api/reg` | Public + CSRF | Register; phone is normalized to E.164 |
+| POST | `/api/login` | Public + CSRF | Authenticate by email or phone; set HttpOnly session cookie |
+| GET | `/api/me` | Session | Current account summary |
+| GET | `/api/home` | Session | Protected welcome response |
+| POST | `/api/logout` | Session + CSRF | Revoke current session |
+| POST | `/api/forgot-password` | Public + CSRF | Start generic-response recovery flow |
+| POST | `/api/verify-otp` | Public + CSRF | Verify recovery code and issue short-lived authorization |
+| POST | `/api/reset-password` | Recovery authorization + CSRF | Reset password and revoke sessions |
+| PUT | `/api/change-password` | Session + CSRF | Change password and revoke all sessions |
+
+The Postman collection is `docs/api/E-Commerce-Auth.postman_collection.json`; it obtains the CSRF token before mutation calls.
+
+## Handover documentation
+
+- `docs/database/SCHEMA.md` and `docs/database/ER_DIAGRAM.md`
+- `docs/handover/REQUIREMENTS_TRACEABILITY.md`
+- `docs/handover/TROUBLESHOOTING.md`
+- `docs/handover/VERIFIED_GAP_ASSESSMENT.md`
+- `PROJECT_CONTEXT.md`
+
+## Verified scope and limitations
+
+Backend tests and the isolated local browser journey verified registration, duplicate rejection, email/phone login, logout, protected access, wrong current password, phone recovery through OTP verification, and CSRF/CORS behavior. Browser password-reset form submission awaits user handoff on the reset screen; reset success and session invalidation are covered by backend integration tests. MySQL persistence/migration was not verified in this work. Rate limiting is in-memory per process, and no email/SMS provider or production deployment review is included. These limits mean this project is not production-ready.

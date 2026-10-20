@@ -20,6 +20,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Collections;
 import java.util.Map;
 import java.time.Duration;
+import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.security.web.csrf.CsrfTokenRepository;
 
 /**
  * Fixed REST API Controller strictly adhering to Master Agent Prompt Section 12 contract.
@@ -32,15 +34,24 @@ public class AuthController {
     private final AuthService authService;
     private final PasswordRecoveryService passwordRecoveryService;
     private final InMemoryRateLimiter rateLimiter;
+    private final CsrfTokenRepository csrfTokenRepository;
 
     @Value("${app.jwt.access-cookie-name:ecommerce_access_token}")
     private String accessCookieName;
 
     public AuthController(AuthService authService, PasswordRecoveryService passwordRecoveryService,
-                          InMemoryRateLimiter rateLimiter) {
+                          InMemoryRateLimiter rateLimiter, CsrfTokenRepository csrfTokenRepository) {
         this.authService = authService;
         this.passwordRecoveryService = passwordRecoveryService;
         this.rateLimiter = rateLimiter;
+        this.csrfTokenRepository = csrfTokenRepository;
+    }
+
+    @GetMapping("/csrf")
+    public ResponseEntity<Map<String, String>> csrf(HttpServletRequest request, HttpServletResponse response) {
+        CsrfToken csrfToken = csrfTokenRepository.generateToken(request);
+        csrfTokenRepository.saveToken(csrfToken, request, response);
+        return ResponseEntity.ok(Collections.singletonMap("csrfToken", csrfToken.getToken()));
     }
 
     /**

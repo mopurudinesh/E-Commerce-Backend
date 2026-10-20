@@ -1060,3 +1060,6 @@ At the end, report the completed work, files changed, setup and startup instruct
 
 **Important:** Continue following my original prompt for everything except the automated testing requirements overridden above and the additional documentation requirement introduced here.
 **//
+## Current authorized implementation status (2026-10-20)
+
+The user's latest task instruction supersedes the original Phase 1 approval gate for this authentication milestone and explicitly authorizes implementation, automated tests, and verification. The earlier testing-deferral add-on remains historical guidance only for this authorized task; 10 frontend tests and 7 backend tests have been implemented and passed. The current design preference is light mode only, and no shopping features were added. See the root `PROJECT_CONTEXT.md` and backend `docs/handover/VERIFIED_GAP_ASSESSMENT.md` for exact verified behavior and remaining limits. Browser reset submission is pending user handoff; MySQL migration/persistence and production deployment were not verified.
